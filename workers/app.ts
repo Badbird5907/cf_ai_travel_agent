@@ -1,4 +1,5 @@
 import { createRequestHandler } from "react-router";
+import { TripDurableObject } from "../app/cf/trip";
 
 declare module "react-router" {
   export interface AppLoadContext {
@@ -21,3 +22,6 @@ export default {
     });
   },
 } satisfies ExportedHandler<Env>;
+
+// Export the Durable Object class for Cloudflare Workers
+export { TripDurableObject };
