@@ -2,6 +2,8 @@ import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { appRouter } from "@/server";
 
 export default async function handleRequest(
   request: Request,
@@ -13,8 +15,15 @@ export default async function handleRequest(
   let shellRendered = false;
   const userAgent = request.headers.get("user-agent");
 
-  if (request.url.startsWith("/api")) {
-    return new Response("Hello, world!", { status: 200 });
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api")) {
+    if (url.pathname.startsWith("/api/trpc")) {
+      return fetchRequestHandler({
+        endpoint: "/api/trpc",
+        req: request,
+        router: appRouter,
+      });
+    }
   }
 
   const body = await renderToReadableStream(

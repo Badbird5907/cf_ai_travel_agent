@@ -1,11 +1,13 @@
 import type { Route } from "./+types/home";
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Plane, MapPin, Sparkles, ArrowRight } from "lucide-react"
+import { useTRPC } from "@/utils/trpc";
+import { useQuery } from "@tanstack/react-query";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
@@ -19,6 +21,11 @@ export function loader({ context }: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const [prompt, setPrompt] = useState("")
+  const trpc = useTRPC()
+  const test = useQuery(trpc.test.hello.queryOptions())
+  useEffect(() => {
+    console.log(test.data)
+  }, [test])
   const [isStarting, setIsStarting] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
