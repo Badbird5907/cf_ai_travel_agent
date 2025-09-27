@@ -7,3 +7,10 @@ Create a non-functional demo user interface for an AI agent travel planner web a
 2. 
 Create typescript types for @mock.ts 
 put them in app/types/...
+
+3.
+I am building a AI travel agent. Help me define the workflow I have mostly worked out in @plan.ts to get @mock.ts 
+
+Example code:
+[copy paste of orchestrator pattern from https://developers.cloudflare.com/agents/patterns/]
+

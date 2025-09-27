@@ -31,7 +31,10 @@
 			"database_id": "fd8f2656-d12e-48d8-ba36-219ec757d463",
 			"migrations_dir": "./drizzle"
 		}
-	]
+	],
+	"ai": {
+		"binding": "AI"
+	}
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

@@ -22,10 +22,6 @@ export function loader({ context }: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   const [prompt, setPrompt] = useState("")
   const trpc = useTRPC()
-  const test = useQuery(trpc.test.hello.queryOptions())
-  useEffect(() => {
-    console.log(test.data)
-  }, [test])
   const [isStarting, setIsStarting] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
