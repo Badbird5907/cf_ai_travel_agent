@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Plane, MapPin, Sparkles, ArrowRight } from "lucide-react"
-
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
@@ -138,7 +137,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <button
                   key={index}
                   onClick={() => setPrompt(example)}
-                  className="p-4 text-left bg-secondary/50 hover:bg-secondary/70 rounded-lg border border-border/50 hover:border-border transition-all duration-200 text-sm"
+                  className="p-4 hover:cursor-pointer text-left bg-secondary/50 hover:bg-secondary/70 rounded-lg border border-border/50 hover:border-border transition-all duration-200 text-sm"
                   disabled={isStarting}
                 >
                   "{example}"
