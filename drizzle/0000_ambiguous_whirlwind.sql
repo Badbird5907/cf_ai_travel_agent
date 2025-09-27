@@ -1,4 +1,15 @@
-CREATE TABLE `activities` (
+
+CREATE TABLE IF NOT EXISTS `trips` (
+	`id` text PRIMARY KEY NOT NULL,
+	`destination` text NOT NULL,
+	`duration` text NOT NULL,
+	`dates` text NOT NULL,
+	`total_cost` real NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `activities` (
 	`id` text PRIMARY KEY NOT NULL,
 	`trip_id` text NOT NULL,
 	`name` text NOT NULL,
@@ -9,7 +20,7 @@ CREATE TABLE `activities` (
 	FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `flight_groups` (
+CREATE TABLE IF NOT EXISTS `flight_groups` (
 	`id` text PRIMARY KEY NOT NULL,
 	`trip_id` text NOT NULL,
 	`description` text NOT NULL,
@@ -18,7 +29,7 @@ CREATE TABLE `flight_groups` (
 	FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `flights` (
+CREATE TABLE IF NOT EXISTS `flights` (
 	`id` text PRIMARY KEY NOT NULL,
 	`flight_group_id` text NOT NULL,
 	`airline` text NOT NULL,
@@ -37,7 +48,7 @@ CREATE TABLE `flights` (
 	FOREIGN KEY (`flight_group_id`) REFERENCES `flight_groups`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `hotels` (
+CREATE TABLE IF NOT EXISTS `hotels` (
 	`id` text PRIMARY KEY NOT NULL,
 	`trip_id` text NOT NULL,
 	`name` text NOT NULL,
@@ -50,7 +61,7 @@ CREATE TABLE `hotels` (
 	FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `itinerary_days` (
+CREATE TABLE IF NOT EXISTS `itinerary_days` (
 	`id` text PRIMARY KEY NOT NULL,
 	`trip_id` text NOT NULL,
 	`day` integer NOT NULL,
@@ -59,7 +70,7 @@ CREATE TABLE `itinerary_days` (
 	FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `restaurants` (
+CREATE TABLE IF NOT EXISTS `restaurants` (
 	`id` text PRIMARY KEY NOT NULL,
 	`trip_id` text NOT NULL,
 	`name` text NOT NULL,
@@ -70,12 +81,3 @@ CREATE TABLE `restaurants` (
 	FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `trips` (
-	`id` text PRIMARY KEY NOT NULL,
-	`destination` text NOT NULL,
-	`duration` text NOT NULL,
-	`dates` text NOT NULL,
-	`total_cost` real NOT NULL,
-	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
-	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
-);

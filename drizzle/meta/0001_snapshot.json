@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ceeed9ad-045e-4b0c-9b17-1cbb0ef27165",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "a19d2497-69a3-4f5d-ae61-a76ebfabe822",
+  "prevId": "ceeed9ad-045e-4b0c-9b17-1cbb0ef27165",
   "tables": {
     "activities": {
       "name": "activities",
@@ -155,6 +155,34 @@
         },
         "airline": {
           "name": "airline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "class": {
+          "name": "class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "carry_on": {
+          "name": "carry_on",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checked_bags": {
+          "name": "checked_bags",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "meal_included": {
+          "name": "meal_included",
           "type": "text",
           "primaryKey": false,
           "notNull": true,

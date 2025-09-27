@@ -4,6 +4,9 @@
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.cloudflare.json" }
   ],
+  "typeRoots": [
+    "./worker-configuration.d.ts"
+  ],
   "compilerOptions": {
     "checkJs": true,
     "verbatimModuleSyntax": true,

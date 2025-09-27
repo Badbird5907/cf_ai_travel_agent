@@ -24,29 +24,12 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-	 "durable_objects": {
-		"bindings": [
-			{
-				"name": "trip",
-				"class_name": "TripDurableObject"
-			}
-		]
-	 },
-	 "migrations": [
+	"d1_databases": [
 		{
-			"tag": "v1",
-			"new_sqlite_classes": [
-				"TripDurableObject"
-			]
-		}
-	],
-	"rules": [
-		{
-			"type": "Text",
-			"globs": [
-				"**/*.sql"
-			],
-			"fallthrough": true,
+			"binding": "DATABASE",
+			"database_name": "trip-planner-database",
+			"database_id": "fd8f2656-d12e-48d8-ba36-219ec757d463",
+			"migrations_dir": "./drizzle"
 		}
 	]
 	/**

@@ -1,3 +1,4 @@
+import React from "react"
 import type { Route } from "./+types/results"
 import { useSearchParams } from "react-router"
 import { Card } from "@/components/ui/card"
@@ -25,17 +26,47 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export function loader({ context }: Route.LoaderArgs) {
+export async function loader({ context, params }: Route.LoaderArgs) {
+  const tripId = params.tripId
+  if (tripId === "trip_mock") {
+    return {
+      tripData: mockTripData,
+    }
+  }
+  const tripData = await context.db.query.trips.findFirst({
+    where: (trip, { eq }) => eq(trip.id, tripId),
+    with: {
+      flightGroups: {
+        with: {
+          flights: true,
+        },
+      },
+      hotels: true,
+      restaurants: true,
+      activities: true,
+      itinerary: true,
+    },
+  })
+  if (!tripData) {
+    throw new Response(
+      null,
+      {
+        status: 404,
+        statusText: "Not Found",
+      }
+    )
+  }
   return {
-    tripData: mockTripData
+    tripData,
   }
 }
 
-export default function Results({ loaderData }: Route.ComponentProps) {
+export default function Results({ loaderData }: Route.ComponentProps): React.ReactElement {
+  console.log(loaderData)
   const [searchParams] = useSearchParams()
   const prompt = searchParams.get("prompt") || "Plan a trip to Tokyo"
 
-  const totalFlightCost = loaderData.tripData.flightGroups.reduce((total, flight) => total + flight.totalPrice, 0)
+  const totalFlightCost = loaderData.tripData!.flightGroups.reduce((total, flight) => total + flight.totalPrice, 0) || 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,19 +107,19 @@ export default function Results({ loaderData }: Route.ComponentProps) {
               <span>Trip for:</span>
               <span className="italic">"{prompt}"</span>
             </div>
-            <h1 className="text-4xl font-bold mb-4">{mockTripData.destination}</h1>
+            <h1 className="text-4xl font-bold mb-4">{loaderData.tripData.destination}</h1>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {mockTripData.dates}
+                {loaderData.tripData.dates}
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {mockTripData.duration}
+                {loaderData.tripData.duration}
               </div>
               <div className="flex items-center gap-1">
                 <DollarSign className="w-4 h-4" />
-                Total: ${mockTripData.totalCost.toLocaleString()}
+                Total: ${loaderData.tripData.totalCost.toLocaleString()}
               </div>
             </div>
           </div>
@@ -105,7 +136,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                 </div>
 
                 <div className="space-y-8">
-                  {mockTripData.flightGroups.map((flightGroup, groupIndex) => (
+                  {loaderData.tripData.flightGroups.map((flightGroup, groupIndex) => (
                     <div key={groupIndex} className="relative">
                       {/* Flight Group Header */}
                       <div className="mb-4">
@@ -139,7 +170,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                                         : groupIndex === 0
                                           ? "Outbound Flight"
                                           : "Return Flight"}{" "}
-                                      • Economy Class
+                                      • {flight.class}
                                     </p>
                                   </div>
                                 </div>
@@ -183,12 +214,13 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                               <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10">
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   <span>✈️ {flight.aircraft}</span>
-                                  <span>🎒 1 Carry-on included</span>
-                                  <span>🍽️ Meal included</span>
+                                  {flight.carryOn && <span>🎒 {flight.carryOn} Carry-on{flight.carryOn > 1 ? "s" : ""} included</span>}
+                                  {flight.checkedBags && <span>👜 {flight.checkedBags} Checked bag{flight.checkedBags > 1 ? "s" : ""} included</span>}
+                                  {flight.mealIncluded && <span>🍽️ Meal included</span>}
                                 </div>
-                                <Badge variant="outline" className="text-xs">
+                                {flight.seat && <Badge variant="outline" className="text-xs">
                                   Seat {flight.seat}
-                                </Badge>
+                                </Badge>}
                               </div>
                             </div>
                           </div>
@@ -216,7 +248,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         <span className="text-sm font-medium">
                           Total Flight Time:{" "}
-                          {Math.floor(mockTripData.flightGroups.reduce((total, group) => {
+                          {Math.floor(loaderData.tripData.flightGroups.reduce((total, group) => {
                             const totalMinutes = group.flights.reduce((mins, flight) => {
                               const [hours, minutes] = flight.duration.replace(/[hm]/g, "").split(" ").map(Number)
                               return mins + hours * 60 + (minutes || 0)
@@ -224,7 +256,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                             return total + totalMinutes
                           }, 0) / 60)}
                           h{" "}
-                          {Math.round(mockTripData.flightGroups.reduce((total, group) => {
+                          {Math.round(loaderData.tripData.flightGroups.reduce((total, group) => {
                             const totalMinutes = group.flights.reduce((mins, flight) => {
                               const [hours, minutes] = flight.duration.replace(/[hm]/g, "").split(" ").map(Number)
                               return mins + hours * 60 + (minutes || 0)
@@ -233,10 +265,6 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                           }, 0) % 60)}
                           m
                         </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>📱 Mobile boarding pass</span>
-                        <span>🔄 Free cancellation within 24h</span>
                       </div>
                     </div>
                   </div>
@@ -290,7 +318,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                 </div>
 
                 <div className="space-y-4">
-                  {mockTripData.restaurants.map((restaurant, index) => (
+                  {loaderData.tripData.restaurants.map((restaurant, index) => (
                     <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
                       <div>
                         <h3 className="font-medium">{restaurant.name}</h3>
@@ -316,7 +344,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                 </div>
 
                 <div className="space-y-4">
-                  {mockTripData.activities.map((activity, index) => (
+                  {loaderData.tripData.activities.map((activity, index) => (
                     <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
                       <div>
                         <h3 className="font-medium">{activity.name}</h3>
@@ -358,7 +386,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
                   </div>
                   <div className="border-t pt-3 flex justify-between font-semibold">
                     <span>Total</span>
-                    <span>${mockTripData.totalCost.toLocaleString()}</span>
+                    <span>${loaderData.tripData.totalCost.toLocaleString()}</span>
                   </div>
                 </div>
               </Card>
@@ -367,7 +395,7 @@ export default function Results({ loaderData }: Route.ComponentProps) {
               <Card className="p-6">
                 <h3 className="font-semibold mb-4">Daily Itinerary</h3>
                 <div className="space-y-4">
-                  {mockTripData.itinerary.map((day, index) => (
+                  {loaderData.tripData.itinerary.map((day, index) => (
                     <div key={index} className="border-l-2 border-primary/20 pl-4">
                       <h4 className="font-medium text-sm">Day {day.day}</h4>
                       <p className="text-xs text-muted-foreground mb-2">{day.title}</p>

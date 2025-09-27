@@ -15,4 +15,7 @@ export default defineConfig({
       include: ["**/*.sql"],
     }),
   ],
+  optimizeDeps: {
+    exclude: ["virtual:react-router/server-build"], 
+  }
 });

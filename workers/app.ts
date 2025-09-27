@@ -1,5 +1,12 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import { createRequestHandler } from "react-router";
-import { TripDurableObject } from "../app/cf/trip";
+import { drizzle } from 'drizzle-orm/d1';
+import * as schema from '../app/db/schema';
+import type { DrizzleD1Database } from "drizzle-orm/d1";
+interface Env {
+  DATABASE: D1Database;
+}
 
 declare module "react-router" {
   export interface AppLoadContext {
@@ -7,6 +14,7 @@ declare module "react-router" {
       env: Env;
       ctx: ExecutionContext;
     };
+    db: DrizzleD1Database<typeof schema>;
   }
 }
 
@@ -19,9 +27,7 @@ export default {
   async fetch(request, env, ctx) {
     return requestHandler(request, {
       cloudflare: { env, ctx },
+      db: drizzle(env.DATABASE, { schema }),
     });
   },
 } satisfies ExportedHandler<Env>;
-
-// Export the Durable Object class for Cloudflare Workers
-export { TripDurableObject };

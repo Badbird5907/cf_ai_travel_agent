@@ -2,9 +2,10 @@
 import { sqliteTable, text, real, integer } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { generateId } from "../lib/utils";
 
 export const trips = sqliteTable("trips", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("trip")),
   destination: text("destination").notNull(),
   duration: text("duration").notNull(),
   dates: text("dates").notNull(),
@@ -14,7 +15,7 @@ export const trips = sqliteTable("trips", {
 });
 
 export const flightGroups = sqliteTable("flight_groups", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("flight_group")),
   tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   description: text("description").notNull(),
   totalPrice: real("total_price").notNull(),
@@ -22,9 +23,13 @@ export const flightGroups = sqliteTable("flight_groups", {
 });
 
 export const flights = sqliteTable("flights", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("flight")),
   flightGroupId: text("flight_group_id").notNull().references(() => flightGroups.id, { onDelete: "cascade" }),
   airline: text("airline").notNull(),
+  class: text("class").notNull(),
+  carryOn: integer("carry_on").notNull(),
+  checkedBags: integer("checked_bags").notNull(),
+  mealIncluded: text("meal_included").notNull(),
   from: text("from").notNull(),
   fromCity: text("from_city").notNull(),
   to: text("to").notNull(),
@@ -40,7 +45,7 @@ export const flights = sqliteTable("flights", {
 });
 
 export const hotels = sqliteTable("hotels", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("hotel")),
   tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   location: text("location").notNull(),
@@ -52,7 +57,7 @@ export const hotels = sqliteTable("hotels", {
 });
 
 export const restaurants = sqliteTable("restaurants", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("restaurant")),
   tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: text("type").notNull(),
@@ -62,7 +67,7 @@ export const restaurants = sqliteTable("restaurants", {
 });
 
 export const activities = sqliteTable("activities", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("activity")),
   tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: text("type").notNull(),
@@ -72,7 +77,7 @@ export const activities = sqliteTable("activities", {
 });
 
 export const itineraryDays = sqliteTable("itinerary_days", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().$defaultFn(() => generateId("itinerary_day")),
   tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   day: integer("day").notNull(),
   title: text("title").notNull(),
