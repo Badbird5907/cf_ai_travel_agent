@@ -8,8 +8,11 @@
 	"compatibility_date": "2025-04-04",
 	"main": "./workers/app.ts",
 	"vars": {
-		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+		
 	},
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"observability": {
 		"enabled": true
 	},
@@ -34,7 +37,21 @@
 	],
 	"ai": {
 		"binding": "AI"
-	}
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PlannerAgent",
+				"class_name": "PlannerAgent"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["PlannerAgent"]
+		}
+	]
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

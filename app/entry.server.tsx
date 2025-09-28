@@ -4,6 +4,18 @@ import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { appRouter } from "@/server";
+import { createTRPCContext } from "@trpc/tanstack-react-query";
+import { getAgentByName, routeAgentRequest } from "agents";
+import type { PlannerAgent } from "@/agents/plan";
+
+const createContext = (ctx: AppLoadContext, headers: Headers) => {
+  return {
+    headers: headers,
+    env: ctx.cloudflare.env,
+    db: ctx.db,
+  }
+}
+export type TRPCContext = ReturnType<typeof createContext>;
 
 export default async function handleRequest(
   request: Request,
@@ -16,12 +28,21 @@ export default async function handleRequest(
   const userAgent = request.headers.get("user-agent");
 
   const url = new URL(request.url);
+  console.log("url.pathname", url.pathname);
+  if (url.pathname.startsWith("/agents")) {
+    console.log("agents");
+    // Let the agents SDK handle agent routes
+    return (await routeAgentRequest(request, _loadContext.cloudflare.env)) || Response.json({ msg: 'no agent here' }, { status: 404 });
+  }
   if (url.pathname.startsWith("/api")) {
     if (url.pathname.startsWith("/api/trpc")) {
       return fetchRequestHandler({
         endpoint: "/api/trpc",
         req: request,
         router: appRouter,
+        createContext: () => {
+          return createContext(_loadContext, request.headers)
+        }
       });
     }
   }

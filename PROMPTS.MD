@@ -14,3 +14,6 @@ I am building a AI travel agent. Help me define the workflow I have mostly worke
 Example code:
 [copy paste of orchestrator pattern from https://developers.cloudflare.com/agents/patterns/]
 
+4. 
+I am building a AI travel agent. I want to refactor this code to support tool calls (see allTools).
+Modify this agent so that each step first generates some context text that is then fed into generateObject, as generateText can take in tools.
