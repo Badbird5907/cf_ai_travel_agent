@@ -17,7 +17,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { Streamdown } from "streamdown";
-import { ToolInvocationCard } from "@/components/tool-invocation-card";
+import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task";
 
 // Icon imports
 import {
@@ -253,27 +253,61 @@ export default function Chat() {
                             if (showDebug) return null;
 
                             return (
-                              <ToolInvocationCard
-                                // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
-                                key={`${toolCallId}-${i}`}
-                                toolUIPart={part}
-                                toolCallId={toolCallId}
-                                needsConfirmation={needsConfirmation}
-                                onSubmit={({ toolCallId, result }) => {
-                                  addToolResult({
-                                    tool: part.type.replace("tool-", ""),
-                                    toolCallId,
-                                    output: result
-                                  });
-                                }}
-                                addToolResult={(toolCallId, result) => {
-                                  addToolResult({
-                                    tool: part.type.replace("tool-", ""),
-                                    toolCallId,
-                                    output: result
-                                  });
-                                }}
-                              />
+                              <Task key={`${toolCallId}-${i}`} defaultOpen>
+                                <TaskTrigger title={`Tool: ${toolName}`} />
+                                <TaskContent>
+                                  <TaskItem>
+                                    <p className="text-sm text-muted-foreground">Status: {part.state}</p>
+                                  </TaskItem>
+                                  {part.input != null && (
+                                    <TaskItem>
+                                      <strong>Input:</strong>
+                                      <pre className="bg-muted p-2 rounded mt-1 text-xs overflow-auto">
+                                        {JSON.stringify(part.input, null, 2)}
+                                      </pre>
+                                    </TaskItem>
+                                  )}
+                                  {part.output != null && (
+                                    <TaskItem>
+                                      <strong>Output:</strong>
+                                      <pre className="bg-muted p-2 rounded mt-1 text-xs overflow-auto">
+                                        {typeof part.output === "string"
+                                          ? part.output
+                                          : JSON.stringify(part.output, null, 2)}
+                                      </pre>
+                                    </TaskItem>
+                                  )}
+                                  {part.state === "input-available" && needsConfirmation && (
+                                    <TaskItem className="flex gap-2">
+                                      <Button
+                                        onClick={() =>
+                                          addToolResult({
+                                            tool: part.type.replace("tool-", ""),
+                                            toolCallId,
+                                            output: { confirmed: true }
+                                          })
+                                        }
+                                        size="sm"
+                                      >
+                                        Confirm
+                                      </Button>
+                                      <Button
+                                        onClick={() =>
+                                          addToolResult({
+                                            tool: part.type.replace("tool-", ""),
+                                            toolCallId,
+                                            output: { confirmed: false }
+                                          })
+                                        }
+                                        variant="outline"
+                                        size="sm"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </TaskItem>
+                                  )}
+                                </TaskContent>
+                              </Task>
                             );
                           }
                           return null;

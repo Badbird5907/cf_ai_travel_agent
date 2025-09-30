@@ -10,8 +10,11 @@ export const planRouter = router({
     const { prompt } = input;
     const randomId = generateId("agent");
     const agent = await getAgentByName(ctx.env.PlannerAgent, randomId);
-    const resp = await agent.fetch(prompt);
-    console.log(resp);
-    return resp;
+    if (!agent) {
+      return new Response(null, { status: 404 })
+    }
+    return {
+      agentId: randomId,
+    }
   }),
 });

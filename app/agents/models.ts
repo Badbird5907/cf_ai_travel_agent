@@ -1,7 +1,6 @@
 // import { createWorkersAI } from "workers-ai-provider";
 import type { LanguageModel } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { createOpenAI } from "@ai-sdk/openai";
 
 export const getModel = (env: Env): LanguageModel => {
   //const workersAi = createWorkersAI({ binding: env.AI });

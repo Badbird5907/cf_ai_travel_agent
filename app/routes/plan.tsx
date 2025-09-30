@@ -1,20 +1,10 @@
-import React from "react"
-import type { Route } from "./+types/results"
+import React, { useMemo, useState } from "react"
+import type { Route } from "./+types/plan"
 import { useSearchParams } from "react-router"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar } from "@/components/ui/avatar"
-import { Toggle } from "@/components/ui/toggle"
-import { Textarea } from "@/components/ui/textarea"
-import { Streamdown } from "streamdown"
-import { ToolInvocationCard } from "@/components/tool-invocation-card"
-import { isToolUIPart } from "ai"
-import { useAgent } from "agents/react"
-import { useAgentChat } from "agents/ai-react"
-import type { UIMessage } from "@ai-sdk/react"
-import type { tools } from "../agents/tools"
-import { PaperPlaneTilt, Stop, Trash, Bug } from "@phosphor-icons/react"
+import { CostBreakdown } from "@/components/cost-breakdown"
 import {
   Plane,
   Hotel,
@@ -28,7 +18,13 @@ import {
   Share,
   Heart,
 } from "lucide-react"
-import { mockTripData } from "@/lib/mock"
+import type { DeepPartial } from "ai"
+import type { TripData } from "@/types"
+import { ChatSidebar } from "@/components/chat-sidebar"
+import { getAgentByName } from "agents"
+import { useAgent } from "agents/react"
+import { activities, flightGroups } from "@/db/schema"
+import { capitalize } from "@/lib/utils"
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -37,47 +33,61 @@ export function meta({ }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ context, params }: Route.LoaderArgs) {
-  const tripId = params.tripId
-  if (tripId === "trip_mock") {
-    return {
-      tripData: mockTripData,
-    }
+export type AgentState = DeepPartial<TripData>
+export async function loader({ context, params, request }: Route.LoaderArgs) {
+  const agentName = params.agentId
+  const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName) // context.cloudflare.env.PlannerAgent.getByName(new URL(request.url).pathname)
+  agent.setName(agentName)
+
+  if (!agent) {
+    return new Response(null, { status: 404 })
   }
-  const tripData = await context.db.query.trips.findFirst({
-    where: (trip, { eq }) => eq(trip.id, tripId),
-    with: {
-      flightGroups: {
-        with: {
-          flights: true,
-        },
-      },
-      hotels: true,
-      restaurants: true,
-      activities: true,
-      itinerary: true,
-    },
-  })
-  if (!tripData) {
-    throw new Response(
-      null,
-      {
-        status: 404,
-        statusText: "Not Found",
-      }
-    )
-  }
+  const tripData = agent.getState() as AgentState
+  console.log({ tripData })
   return {
-    tripData,
+    agentId: agentName,
+    tripData
   }
+  // return {
+  //   agentId: "mock",
+  //   tripData: mockTripData
+  // }
 }
 
 export default function Plan({ loaderData }: Route.ComponentProps): React.ReactElement {
+  if (typeof window === "undefined") {
+    return <div>Loading...</div>
+  }
   console.log(loaderData)
   const [searchParams] = useSearchParams()
-  const prompt = searchParams.get("prompt") || "Plan a trip to Tokyo"
 
-  const totalFlightCost = loaderData.tripData!.flightGroups.reduce((total, flight) => total + flight.totalPrice, 0) || 0
+  const [tripData, setTripData] = useState<AgentState>(loaderData.tripData)
+
+  const costs = useMemo(() => {
+    const hotelsTotal = tripData?.hotels?.reduce((total, hotel) => total + (hotel?.totalPrice ?? 0), 0) ?? 0
+    const activitiesTotal = tripData?.activities?.reduce((total, activity) => total + (activity?.price ?? 0), 0) ?? 0
+    const mealsTotal = tripData?.estimatedMealsCost ?? 0
+    const flightCost = tripData?.flightGroups?.reduce((total, flight) => total + (flight?.totalPrice ?? 0), 0) || 0
+    const total = hotelsTotal + activitiesTotal + mealsTotal + flightCost
+
+    return {
+      hotelsTotal,
+      activitiesTotal,
+      mealsTotal,
+      flightCost,
+      total
+    }
+  }, [tripData])
+
+
+  useAgent({
+    agent: "PlannerAgent",
+    name: loaderData.agentId,
+    onStateUpdate: (state: AgentState) => { // subscribe to state updates
+      console.log("state change", { state })
+      setTripData(state)
+    }
+  })
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -109,34 +119,30 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
         </div>
       </header>
       <div className="flex-1 flex">
-        <div className="hidden lg:flex fixed inset-y-0 left-0 z-20 w-full max-w-[360px] xl:max-w-[380px] flex-col bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-r border-border/60" aria-label="Travel planner chat">
-          <SidebarContent />
+        <div className="w-1/3 min-w-[400px] max-w-[500px] h-[calc(100vh-73px)] sticky top-[73px]">
+          <ChatSidebar agentId={loaderData.agentId} />
         </div>
 
-        <div className="flex-1 lg:ml-[360px] xl:ml-[380px]">
+        <div className="flex-1">
           {/* Main Content */}
-          <main className="container mx-auto px-6 py-8">
+          <main className="px-6 py-8 overflow-y-auto">
             <div className="max-w-6xl mx-auto">
               {/* Trip Header */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <span>Trip for:</span>
-                  <span className="italic">"{prompt}"</span>
-                </div>
-                <h1 className="text-4xl font-bold mb-4">{loaderData.tripData.destination}</h1>
+                <h1 className="text-4xl font-bold mb-4">{tripData?.destination}</h1>
                 <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-                  <div className="flex items-center gap-1">
+                  {tripData?.dates && <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    {loaderData.tripData.dates}
-                  </div>
-                  <div className="flex items-center gap-1">
+                    {tripData?.dates}
+                  </div>}
+                  {tripData?.duration && <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {loaderData.tripData.duration}
-                  </div>
-                  <div className="flex items-center gap-1">
+                    {tripData?.duration}
+                  </div>}
+                  {costs.total > 0 && <div className="flex items-center gap-1">
                     <DollarSign className="w-4 h-4" />
-                    Total: ${loaderData.tripData.totalCost.toLocaleString()}
-                  </div>
+                    Total: ${costs.total.toLocaleString() ?? '0'}
+                  </div>}
                 </div>
               </div>
 
@@ -144,286 +150,276 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-8">
                   {/* Flights */}
-                  <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Plane className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-semibold">Flights</h2>
-                      <Badge variant="secondary">${totalFlightCost.toLocaleString()}</Badge>
-                    </div>
+                  {tripData?.flightGroups && tripData?.flightGroups.length > 0 && (
+                    <Card className="p-6">
+                      <div className="flex items-center gap-2">
+                        <Plane className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-semibold">Flights</h2>
+                        <Badge variant="secondary">${costs.flightCost.toLocaleString()}</Badge>
+                      </div>
 
-                    <div className="space-y-8">
-                      {loaderData.tripData.flightGroups.map((flightGroup, groupIndex) => (
-                        <div key={groupIndex} className="relative">
-                          {/* Flight Group Header */}
-                          <div className="mb-4">
-                            <h3 className="font-semibold text-lg mb-1">{flightGroup.description}</h3>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>Total: ${flightGroup.totalPrice}</span>
-                              {flightGroup.layoverTime && <span>Layover: {flightGroup.layoverTime}</span>}
+                      <div className="space-y-8">
+                        {tripData?.flightGroups?.map((flightGroup, groupIndex) => (
+                          <div key={groupIndex} className="relative">
+                            {/* Flight Group Header */}
+                            <div className="mb-4">
+                              <h3 className="font-semibold text-lg mb-1">{flightGroup?.description}</h3>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>Total: ${flightGroup?.totalPrice}</span>
+                                {flightGroup?.layoverTime && <span>Layover: {flightGroup.layoverTime}</span>}
+                              </div>
                             </div>
-                          </div>
 
-                          {/* Individual Flights */}
-                          <div className="space-y-4">
-                            {flightGroup.flights.map((flight, flightIndex) => (
-                              <div key={flightIndex} className="relative">
-                                {/* Connection line for multiple flights */}
-                                {flightGroup.flights.length > 1 && flightIndex < flightGroup.flights.length - 1 && (
-                                  <div className="absolute left-6 top-full w-0.5 h-4 bg-gradient-to-b from-primary to-primary/20 z-10"></div>
-                                )}
+                            {/* Individual Flights */}
+                            <div className="space-y-4">
+                              {flightGroup?.flights?.map((flight, flightIndex) => (
+                                <div key={flightIndex} className="relative">
+                                  {/* Connection line for multiple flights */}
+                                  {flightGroup?.flights && flightGroup.flights.length > 1 && flightIndex < flightGroup.flights.length - 1 && (
+                                    <div className="absolute left-6 top-full w-0.5 h-4 bg-gradient-to-b from-primary to-primary/20 z-10"></div>
+                                  )}
 
-                                <div className="bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 rounded-xl p-6">
-                                  <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                        <Plane className={`w-5 h-5 text-primary ${groupIndex === 1 ? "rotate-180" : ""}`} />
+                                  <div className="bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 rounded-xl p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                          <Plane className={`w-5 h-5 text-primary ${groupIndex === 1 ? "rotate-180" : ""}`} />
+                                        </div>
+                                        <div>
+                                          <h4 className="font-semibold text-lg">{flight?.airline}</h4>
+                                          <p className="text-sm text-muted-foreground">
+                                            {flightGroup?.flights && flightGroup.flights.length > 1
+                                              ? `Segment ${flightIndex + 1}`
+                                              : groupIndex === 0
+                                                ? "Outbound Flight"
+                                                : "Return Flight"}{" "}
+                                            {"• " + capitalize(flight?.class?.replace("_", " ") ?? "")}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <h4 className="font-semibold text-lg">{flight.airline}</h4>
-                                        <p className="text-sm text-muted-foreground">
-                                          {flightGroup.flights.length > 1
-                                            ? `Segment ${flightIndex + 1}`
-                                            : groupIndex === 0
-                                              ? "Outbound Flight"
-                                              : "Return Flight"}{" "}
-                                          • {flight.class}
+                                      <div className="text-right">
+                                        <p className="text-2xl font-bold text-primary">${flight?.price}</p>
+                                        <p className="text-xs text-muted-foreground">per person</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-4 items-center">
+                                      <div className="text-center">
+                                        <p className="text-2xl font-bold">{flight?.fromAirportCode}</p>
+                                        <p className="text-sm text-muted-foreground">{flight?.fromCity}</p>
+                                        <p className="text-lg font-semibold mt-1">{flight?.departureTime && new Date(flight.departureTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                                        <p className="text-xs text-muted-foreground">{flight?.date}</p>
+                                      </div>
+
+                                      <div className="text-center relative">
+                                        <div className="flex items-center justify-center mb-2">
+                                          <div className="w-full h-0.5 bg-gradient-to-r from-primary/20 via-primary to-primary/20"></div>
+                                          <Plane
+                                            className={`w-10 h-10 text-primary mx-2 ${groupIndex === 1 ? "-rotate-90" : "rotate-90"}`}
+                                          />
+                                          <div className="w-full h-0.5 bg-gradient-to-r from-primary/20 via-primary to-primary/20"></div>
+                                        </div>
+                                        <p className="text-sm font-medium text-primary">{flight?.duration}</p>
+                                        <p className="text-xs text-muted-foreground">{flightGroup?.flights && flightGroup.flights.length === 1 ? "Non-stop" : "Stopover"}</p>
+                                      </div>
+
+                                      <div className="text-center">
+                                        <p className="text-2xl font-bold">{flight?.toAirportCode}</p>
+                                        <p className="text-sm text-muted-foreground">{flight?.toCity}</p>
+                                        <p className="text-lg font-semibold mt-1">{flight?.arrivalTime && new Date(flight.arrivalTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {flight?.arrivalDate || flight?.date}
+                                          {flight?.arrivalTime?.includes("+1") && <span className="text-primary ml-1">+1</span>}
                                         </p>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-2xl font-bold text-primary">${flight.price}</p>
-                                      <p className="text-xs text-muted-foreground">per person</p>
-                                    </div>
-                                  </div>
 
-                                  <div className="grid grid-cols-3 gap-4 items-center">
-                                    <div className="text-center">
-                                      <p className="text-2xl font-bold">{flight.from}</p>
-                                      <p className="text-sm text-muted-foreground">{flight.fromCity}</p>
-                                      <p className="text-lg font-semibold mt-1">{flight.departureTime}</p>
-                                      <p className="text-xs text-muted-foreground">{flight.date}</p>
-                                    </div>
-
-                                    <div className="text-center relative">
-                                      <div className="flex items-center justify-center mb-2">
-                                        <div className="w-full h-0.5 bg-gradient-to-r from-primary/20 via-primary to-primary/20"></div>
-                                        <Plane
-                                          className={`w-10 h-10 text-primary mx-2 ${groupIndex === 1 ? "-rotate-90" : "rotate-90"}`}
-                                        />
-                                        <div className="w-full h-0.5 bg-gradient-to-r from-primary/20 via-primary to-primary/20"></div>
+                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10">
+                                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                        <span>✈️ {flight?.aircraft}</span>
+                                        {flight?.carryOn && flight?.carryOn > 0 ? <span>🎒 {flight.carryOn} Carry-on{flight.carryOn > 1 ? "s" : ""} included</span> : null}
+                                        {flight?.checkedBags && flight?.checkedBags > 0 ? <span>👜 {flight.checkedBags} Checked bag{flight.checkedBags > 1 ? "s" : ""} included</span> : null}
+                                        {flight?.mealIncluded && <span>🍽️ Meal included</span>}
                                       </div>
-                                      <p className="text-sm font-medium text-primary">{flight.duration}</p>
-                                      <p className="text-xs text-muted-foreground">Non-stop</p>
+                                      {flight?.seat && <Badge variant="outline" className="text-xs">
+                                        {flight.seat}
+                                      </Badge>}
                                     </div>
-
-                                    <div className="text-center">
-                                      <p className="text-2xl font-bold">{flight.to}</p>
-                                      <p className="text-sm text-muted-foreground">{flight.toCity}</p>
-                                      <p className="text-lg font-semibold mt-1">{flight.arrivalTime}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {flight.arrivalDate || flight.date}
-                                        {flight.arrivalTime.includes("+1") && <span className="text-primary ml-1">+1</span>}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10">
-                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                      <span>✈️ {flight.aircraft}</span>
-                                      {flight.carryOn && <span>🎒 {flight.carryOn} Carry-on{flight.carryOn > 1 ? "s" : ""} included</span>}
-                                      {flight.checkedBags && <span>👜 {flight.checkedBags} Checked bag{flight.checkedBags > 1 ? "s" : ""} included</span>}
-                                      {flight.mealIncluded && <span>🍽️ Meal included</span>}
-                                    </div>
-                                    {flight.seat && <Badge variant="outline" className="text-xs">
-                                      Seat {flight.seat}
-                                    </Badge>}
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Layover Information */}
-                          {flightGroup.layoverTime && flightGroup.flights.length > 1 && (
-                            <div className="flex items-center justify-center py-2">
-                              <div className="bg-orange-500/10 border border-orange-500/20 rounded-full px-4 py-2 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-orange-500" />
-                                <span className="text-sm font-medium text-orange-500">
-                                  Layover in {flightGroup.flights[0].to}: {flightGroup.layoverTime}
-                                </span>
-                              </div>
+                              ))}
                             </div>
-                          )}
-                        </div>
-                      ))}
 
-                      {/* Flight Summary */}
-                      <div className="bg-muted/30 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm font-medium">
-                              Total Flight Time:{" "}
-                              {Math.floor(loaderData.tripData.flightGroups.reduce((total, group) => {
-                                const totalMinutes = group.flights.reduce((mins, flight) => {
-                                  const [hours, minutes] = flight.duration.replace(/[hm]/g, "").split(" ").map(Number)
-                                  return mins + hours * 60 + (minutes || 0)
-                                }, 0)
-                                return total + totalMinutes
-                              }, 0) / 60)}
-                              h{" "}
-                              {Math.round(loaderData.tripData.flightGroups.reduce((total, group) => {
-                                const totalMinutes = group.flights.reduce((mins, flight) => {
-                                  const [hours, minutes] = flight.duration.replace(/[hm]/g, "").split(" ").map(Number)
-                                  return mins + hours * 60 + (minutes || 0)
-                                }, 0)
-                                return total + totalMinutes
-                              }, 0) % 60)}
-                              m
-                            </span>
+                            {/* Layover Information */}
+                            {flightGroup?.layoverTime && flightGroup?.flights && flightGroup.flights.length > 1 && (
+                              <div className="flex items-center justify-center py-2">
+                                <div className="bg-orange-500/10 border border-orange-500/20 rounded-full px-4 py-2 flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-orange-500" />
+                                  <span className="text-sm font-medium text-orange-500">
+                                    Layover in {flightGroup.flights[0]?.to}: {flightGroup.layoverTime}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Flight Summary */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-sm font-medium">
+                                Total Flight Time:{" "}
+                                {Math.floor((tripData?.flightGroups?.reduce((total, group) => {
+                                  const totalMinutes = group?.flights?.reduce((mins, flight) => {
+                                    const duration = flight?.duration
+                                    if (!duration) return mins
+                                    const [hours, minutes] = duration.replace(/[hm]/g, "").split(" ").map(Number)
+                                    return mins + hours * 60 + (minutes || 0)
+                                  }, 0) || 0
+                                  return total + totalMinutes
+                                }, 0) || 0) / 60)}
+                                h{" "}
+                                {Math.round((tripData?.flightGroups?.reduce((total, group) => {
+                                  const totalMinutes = group?.flights?.reduce((mins, flight) => {
+                                    const duration = flight?.duration
+                                    if (!duration) return mins
+                                    const [hours, minutes] = duration.replace(/[hm]/g, "").split(" ").map(Number)
+                                    return mins + hours * 60 + (minutes || 0)
+                                  }, 0) || 0
+                                  return total + totalMinutes
+                                }, 0) || 0) % 60)}
+                                m
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
 
+                  )}
                   {/* Hotels */}
-                  <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Hotel className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-semibold">Accommodation</h2>
-                      <Badge variant="secondary">${loaderData.tripData.hotels.reduce((total, hotel) => total + hotel.totalPrice, 0).toLocaleString()}</Badge>
-                    </div>
+                  {tripData?.hotels && tripData?.hotels.length > 0 && (
+                    <Card className="p-6">
+                      <div className="flex items-center gap-2">
+                        <Hotel className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-semibold">Accommodation</h2>
+                        <Badge variant="secondary">${tripData?.hotels?.reduce((total, hotel) => total + (hotel?.totalPrice ?? 0), 0).toLocaleString() ?? '0'}</Badge>
+                      </div>
 
-                    <div className="space-y-4">
-                      {loaderData.tripData.hotels.map((hotel, index) => (
-                        <div key={index} className="p-4 bg-muted/30 rounded-lg">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h3 className="font-medium">{hotel.name}</h3>
-                              <p className="text-sm text-muted-foreground">{hotel.location}</p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                <span className="text-xs">{hotel.rating}</span>
+                      <div className="space-y-4">
+                        {tripData?.hotels?.map((hotel, index) => (
+                          <div key={index} className="p-4 bg-muted/30 rounded-lg">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h3 className="font-medium">{hotel?.name}</h3>
+                                <p className="text-sm text-muted-foreground">{hotel?.location}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-xs">{hotel?.rating}</span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">${hotel?.pricePerNight}/night</p>
+                                <p className="text-xs text-muted-foreground">{hotel?.nights} nights</p>
+                                <p className="text-xs font-medium">${hotel?.totalPrice?.toLocaleString()}</p>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">${hotel.pricePerNight}/night</p>
-                              <p className="text-xs text-muted-foreground">{hotel.nights} nights</p>
-                              <p className="text-xs font-medium">${hotel.totalPrice.toLocaleString()}</p>
+
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {hotel?.amenities?.filter((amenity): amenity is string => amenity != null).map((amenity: string, amenityIndex: number) => (
+                                <Badge key={amenityIndex} variant="outline" className="text-xs">
+                                  {amenity}
+                                </Badge>
+                              )) || null}
                             </div>
                           </div>
-
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {hotel.amenities.map((amenity: string, amenityIndex: number) => (
-                              <Badge key={amenityIndex} variant="outline" className="text-xs">
-                                {amenity}
-                              </Badge>
-                            )) || null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
 
                   {/* Restaurants */}
-                  <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <UtensilsCrossed className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-semibold">Dining</h2>
-                    </div>
+                  {tripData?.restaurants && tripData?.restaurants.length > 0 && (
+                    <Card className="p-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <UtensilsCrossed className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-semibold">Dining</h2>
+                      </div>
 
-                    <div className="space-y-4">
-                      {loaderData.tripData.restaurants.map((restaurant, index) => (
-                        <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
-                          <div>
-                            <h3 className="font-medium">{restaurant.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {restaurant.type} • {restaurant.location}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs">{restaurant.rating}</span>
+                      <div className="space-y-4">
+                        {tripData?.restaurants?.map((restaurant, index) => (
+                          <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
+                            <div>
+                              <h3 className="font-medium">{restaurant?.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {restaurant?.type} • {restaurant?.location}
+                              </p>
+                              <div className="flex items-center gap-1 mt-1">
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                <span className="text-xs">{restaurant?.rating}</span>
+                              </div>
                             </div>
+                            <Badge variant="outline">{restaurant?.priceRange}</Badge>
                           </div>
-                          <Badge variant="outline">{restaurant.priceRange}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
 
                   {/* Activities */}
-                  <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <MapPin className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-semibold">Activities</h2>
-                    </div>
+                  {tripData?.activities && tripData?.activities.length > 0 && (
+                    <Card className="p-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <MapPin className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-semibold">Activities</h2>
+                      </div>
 
-                    <div className="space-y-4">
-                      {loaderData.tripData.activities.map((activity, index) => (
-                        <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
-                          <div>
-                            <h3 className="font-medium">{activity.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {activity.type} • {activity.location}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">Duration: {activity.duration}</p>
+                      <div className="space-y-4">
+                        {tripData?.activities?.map((activity, index) => (
+                          <div key={index} className="flex justify-between items-center p-4 bg-muted/30 rounded-lg">
+                            <div>
+                              <h3 className="font-medium">{activity?.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {activity?.type} • {activity?.location}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">Duration: {activity?.duration}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{activity?.price === 0 ? "Free" : `$${activity?.price}`}</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium">{activity.price === 0 ? "Free" : `$${activity.price}`}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
                 </div>
 
                 {/* Sidebar */}
                 <div className="space-y-6">
                   {/* Cost Breakdown */}
-                  <Card className="p-6">
-                    <h3 className="font-semibold mb-4">Cost Breakdown</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Flights</span>
-                        <span className="text-sm font-medium">${totalFlightCost.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Hotels</span>
-                        <span className="text-sm font-medium">${loaderData.tripData.hotels.reduce((total, hotel) => total + hotel.totalPrice, 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Activities</span>
-                        <span className="text-sm font-medium">$110</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Meals (estimated)</span>
-                        <span className="text-sm font-medium">$400</span>
-                      </div>
-                      <div className="border-t pt-3 flex justify-between font-semibold">
-                        <span>Total</span>
-                        <span>${loaderData.tripData.totalCost.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </Card>
+                  {costs.total > 0 && <CostBreakdown {...costs} />}
 
                   {/* Daily Itinerary */}
-                  <Card className="p-6">
-                    <h3 className="font-semibold mb-4">Daily Itinerary</h3>
-                    <div className="space-y-4">
-                      {loaderData.tripData.itinerary.map((day, index) => (
-                        <div key={index} className="border-l-2 border-primary/20 pl-4">
-                          <h4 className="font-medium text-sm">Day {day.day}</h4>
-                          <p className="text-xs text-muted-foreground mb-2">{day.title}</p>
-                          <ul className="text-xs text-muted-foreground space-y-1">
-                            {day.activities.map((activity: string, actIndex: number) => (
-                              <li key={actIndex}>• {activity}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                  {tripData?.itinerary && tripData?.itinerary.length > 0 && (
+                     <Card className="p-6">
+                     <h3 className="font-semibold mb-4">Daily Itinerary</h3>
+                     <div className="space-y-4">
+                       {tripData?.itinerary?.map((day, index) => (
+                         <div key={index} className="border-l-2 border-primary/20 pl-4">
+                           <h4 className="font-medium text-sm">Day {day?.day}</h4>
+                           <p className="text-xs text-muted-foreground mb-2">{day?.title}</p>
+                           <ul className="text-xs text-muted-foreground space-y-1">
+                             {day?.activities?.filter((activity): activity is string => activity != null).map((activity: string, actIndex: number) => (
+                               <li key={actIndex}>• {activity}</li>
+                             ))}
+                           </ul>
+                         </div>
+                       ))}
+                     </div>
+                   </Card>
+                  )}
                 </div>
               </div>
             </div>
@@ -431,148 +427,5 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
         </div>
       </div>
     </div>
-  )
-}
-
-function SidebarContent(): React.ReactElement {
-  const toolsRequiringConfirmation: (keyof typeof tools)[] = []
-  const [showDebug, setShowDebug] = React.useState(false)
-  const [agentInput, setAgentInput] = React.useState("")
-  const [textareaHeight, setTextareaHeight] = React.useState("auto")
-  const messagesEndRef = React.useRef<HTMLDivElement>(null)
-
-  const agent = useAgent({ agent: "PlannerAgent" })
-  const { messages, addToolResult, clearHistory, status, sendMessage, stop } =
-    useAgentChat<unknown, UIMessage<{ createdAt: string }>>({ agent })
-
-  React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  const pendingToolCallConfirmation = messages.some((m: UIMessage) =>
-    m.parts?.some(
-      (part) =>
-        isToolUIPart(part) &&
-        part.state === "input-available" &&
-        toolsRequiringConfirmation.includes(
-          part.type.replace("tool-", "") as keyof typeof tools,
-        ),
-    ),
-  )
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!agentInput.trim()) return
-    const content = agentInput
-    setAgentInput("")
-    await sendMessage({ role: "user", parts: [{ type: "text", text: content }] })
-    setTextareaHeight("auto")
-  }
-
-  return (
-    <>
-      <div className="px-4 py-3 border-b border-border/60 flex items-center gap-3">
-        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary">
-          <svg width="20" height="20" className="text-primary"><circle cx="10" cy="10" r="8" fill="currentColor" /></svg>
-        </div>
-        <div className="flex-1 min-w-0"><p className="font-semibold truncate">Travel Planner Chat</p></div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowDebug((p) => !p)} aria-label="Toggle debug"><Bug size={16} /></button>
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={clearHistory} aria-label="Clear chat"><Trash size={18} /></Button>
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 relative">
-        <div className="absolute inset-0 overflow-y-auto p-4 space-y-4 pb-28">
-          {messages.map((m, index) => {
-            const isUser = m.role === "user"
-            const showAvatar = index === 0 || messages[index - 1]?.role !== m.role
-            return (
-              <div key={m.id}>
-                {showDebug && (
-                  <pre className="text-xs text-muted-foreground overflow-scroll">{JSON.stringify(m, null, 2)}</pre>
-                )}
-                <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex gap-2 max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-                    {showAvatar && !isUser ? <Avatar username={"AI"} /> : !isUser ? <div className="w-8" /> : null}
-                    <div>
-                      <div>
-                        {m.parts?.map((part, i) => {
-                          if (part.type === "text") {
-                            return (
-                              <div key={i}>
-                                <div className={`p-3 rounded-md border ${isUser ? "bg-primary/10 border-primary/20" : "bg-muted/30 border-border/60"}`}>
-                                  <Streamdown>{part.text}</Streamdown>
-                                </div>
-                              </div>
-                            )
-                          }
-                          if (isToolUIPart(part)) {
-                            const toolCallId = part.toolCallId
-                            const toolName = part.type.replace("tool-", "")
-                            const needsConfirmation = toolsRequiringConfirmation.includes(toolName as keyof typeof tools)
-                            return (
-                              <ToolInvocationCard
-                                key={`${toolCallId}-${i}`}
-                                toolUIPart={part}
-                                toolCallId={toolCallId}
-                                needsConfirmation={needsConfirmation}
-                                onSubmit={({ toolCallId, result }: { toolCallId: string; result: unknown }) => {
-                                  addToolResult({ tool: part.type.replace("tool-", ""), toolCallId, output: result })
-                                }}
-                                addToolResult={(toolCallId: string, result: unknown) => {
-                                  addToolResult({ tool: part.type.replace("tool-", ""), toolCallId, output: result })
-                                }}
-                              />
-                            )
-                          }
-                          return null
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="p-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t border-border/60">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 relative">
-            <Textarea
-              disabled={pendingToolCallConfirmation}
-              placeholder={pendingToolCallConfirmation ? "Please respond to the tool confirmation above..." : "Chat about this trip..."}
-              className="flex w-full border border-neutral-200 dark:border-neutral-700 px-3 py-2 ring-offset-background placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base pr-12 dark:bg-neutral-900"
-              value={agentInput}
-              onChange={(e) => {
-                setAgentInput(e.target.value)
-                ;(e.target as HTMLTextAreaElement).style.height = "auto"
-                ;(e.target as HTMLTextAreaElement).style.height = `${(e.target as HTMLTextAreaElement).scrollHeight}px`
-                setTextareaHeight(`${(e.target as HTMLTextAreaElement).scrollHeight}px`)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !(e as any).nativeEvent?.isComposing) {
-                  e.preventDefault()
-                  handleSubmit(e as unknown as React.FormEvent)
-                  setTextareaHeight("auto")
-                }
-              }}
-              rows={2}
-              style={{ height: textareaHeight }}
-            />
-            <div className="absolute bottom-1.5 right-2 w-fit flex flex-row justify-end">
-              {status === "submitted" || status === "streaming" ? (
-                <button type="button" onClick={stop} className="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-1.5 h-fit border border-neutral-200 dark:border-neutral-800" aria-label="Stop generation"><Stop size={16} /></button>
-              ) : (
-                <button type="submit" className="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-1.5 h-fit border border-neutral-200 dark:border-neutral-800" disabled={pendingToolCallConfirmation || !agentInput.trim()} aria-label="Send message"><PaperPlaneTilt size={16} /></button>
-              )}
-            </div>
-          </div>
-        </div>
-      </form>
-    </>
   )
 }

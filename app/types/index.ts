@@ -39,3 +39,7 @@ export type TripData = InferResultType<"trips", {
   activities: true,
   itinerary: true
 }>;
+
+export type DeepPartial<T> = T extends object ? {
+  [P in keyof T]?: DeepPartial<T[P]>;
+} : T;

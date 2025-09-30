@@ -5,12 +5,14 @@ import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../app/db/schema';
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import type { AgentNamespace, Agent } from "agents";
+import type { PlannerAgent } from "@/agents/plan";
 declare global {
   interface Env {
     EXA_API_KEY: string;
     DATABASE: D1Database;
-    PlannerAgent: AgentNamespace<Agent<Env>>;
+    PlannerAgent: AgentNamespace<PlannerAgent>;
     AI: Ai;
+    RAPIDAPI_KEY: string;
   }
 }
 declare module "react-router" {

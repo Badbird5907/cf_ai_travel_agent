@@ -4,6 +4,6 @@ export default [
   index("routes/home.tsx"),
   route("/planning","routes/planning.tsx"),
   route("/results/:tripId","routes/results.tsx"),
-  route("/plan/:tripId","routes/plan.tsx"),
+  route("/plan/:agentId","routes/plan.tsx"),
   route("/chat","routes/chat.tsx")
 ] satisfies RouteConfig;

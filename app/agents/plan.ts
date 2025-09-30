@@ -1,27 +1,25 @@
 import { getModel } from "@/agents/models";
-import { type Connection, type ConnectionContext, type WSMessage } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent"
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, streamText, stepCountIs, type StreamTextOnFinishCallback, type ToolSet } from "ai";
-import { connect } from "cloudflare:sockets";
 import { cleanupMessages, processToolCalls } from "./utils";
-import { tools } from "./tools";
+import { getTools, getPlannerTools } from "./tools";
+import type { DeepPartial, TripData } from "@/types";
+import { getSystemPrompt } from "./system";
 
-interface AgentProps {
-  prompt: string;
-  userGeoLocation: string;
-}
-export class PlannerAgent extends AIChatAgent<Env, AgentProps> {
-  enableSql = true;
-  async getState() {
-    return this.state;
+
+export type AgentState = DeepPartial<TripData>
+export class PlannerAgent extends AIChatAgent<Env, AgentState> {
+  getState(): AgentState {
+    return this.state as AgentState;
   }
 
   async onChatMessage(
     onFinish: StreamTextOnFinishCallback<ToolSet>,
-    _options?: { abortSignal?: AbortSignal }
+    options?: { abortSignal?: AbortSignal }
   ) {
     const allTools = {
-      ...tools,
+      ...getTools(this.env),
+      ...getPlannerTools(this)
     } satisfies ToolSet;
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
@@ -37,11 +35,18 @@ export class PlannerAgent extends AIChatAgent<Env, AgentProps> {
           messages: convertToModelMessages(processedMessages),
           model: getModel(this.env),
           tools: allTools,
+          system: getSystemPrompt(),
           // Remove stopWhen to allow model to continue until it naturally finishes
           onFinish: onFinish as unknown as StreamTextOnFinishCallback<typeof allTools>,
-          stopWhen: stepCountIs(25)
+          stopWhen: stepCountIs(25),
+          abortSignal: options?.abortSignal,
+          onAbort: () => {
+            console.log("Aborting stream");
+          }
         });
-        writer.merge(result.toUIMessageStream())
+        writer.merge(result.toUIMessageStream({
+          sendReasoning: true,
+        }))
       }
     })
     return createUIMessageStreamResponse({ stream });

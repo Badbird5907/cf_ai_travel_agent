@@ -18,6 +18,7 @@ import {
   Heart,
 } from "lucide-react"
 import { mockTripData } from "@/lib/mock"
+import { capitalize } from "@/lib/utils"
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -170,7 +171,7 @@ export default function Results({ loaderData }: Route.ComponentProps): React.Rea
                                         : groupIndex === 0
                                           ? "Outbound Flight"
                                           : "Return Flight"}{" "}
-                                      • {flight.class}
+                                      • {capitalize(flight.class.replace("_", " "))}
                                     </p>
                                   </div>
                                 </div>
@@ -214,12 +215,12 @@ export default function Results({ loaderData }: Route.ComponentProps): React.Rea
                               <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10">
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   <span>✈️ {flight.aircraft}</span>
-                                  {flight.carryOn && <span>🎒 {flight.carryOn} Carry-on{flight.carryOn > 1 ? "s" : ""} included</span>}
-                                  {flight.checkedBags && <span>👜 {flight.checkedBags} Checked bag{flight.checkedBags > 1 ? "s" : ""} included</span>}
+                                  {flight.carryOn != null && <span>🎒 {flight.carryOn} Carry-on{flight.carryOn > 1 ? "s" : ""} included</span>}
+                                  {flight.checkedBags != null && <span>👜 {flight.checkedBags} Checked bag{flight.checkedBags > 1 ? "s" : ""} included</span>}
                                   {flight.mealIncluded && <span>🍽️ Meal included</span>}
                                 </div>
                                 {flight.seat && <Badge variant="outline" className="text-xs">
-                                  Seat {flight.seat}
+                                  {flight.seat}
                                 </Badge>}
                               </div>
                             </div>

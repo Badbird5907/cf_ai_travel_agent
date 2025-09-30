@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Plane, MapPin, Sparkles, ArrowRight } from "lucide-react"
 import { useTRPC } from "@/utils/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
-export function meta({}: Route.MetaArgs) {
+export function meta({ }: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
     { name: "description", content: "Welcome to React Router!" },
@@ -16,7 +16,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export function loader({ context }: Route.LoaderArgs) {
-  return { };
+  return {};
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
@@ -30,9 +30,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     if (!prompt.trim()) return
 
     setIsStarting(true)
-    console.log("mutating")
-    mutation.mutateAsync({ prompt }).then((res) => {
-      console.log(res)
+    mutation.mutate({ prompt }, {
+      onSuccess: (data) => {
+        window.location.href = `/plan/${data.agentId}`
+      }
     })
     // Simulate navigation delay
     // setTimeout(() => {

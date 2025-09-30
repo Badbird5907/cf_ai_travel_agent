@@ -16,6 +16,12 @@ export default defineConfig({
     }),
   ],
   optimizeDeps: {
-    exclude: ["virtual:react-router/server-build"], 
+    exclude: ["virtual:react-router/server-build", "cloudflare:email"], 
+        
+  },
+  build: {
+    rollupOptions: {
+      external: ["cloudflare:email"],
+    }
   }
 });

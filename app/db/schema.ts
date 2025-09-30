@@ -9,7 +9,7 @@ export const trips = sqliteTable("trips", {
   destination: text("destination").notNull(),
   duration: text("duration").notNull(),
   dates: text("dates").notNull(),
-  totalCost: real("total_cost").notNull(),
+  estimatedMealsCost: real("estimated_meals_cost").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
 });
@@ -20,6 +20,7 @@ export const flightGroups = sqliteTable("flight_groups", {
   description: text("description").notNull(),
   totalPrice: real("total_price").notNull(),
   layoverTime: text("layover_time"),
+  url: text("url"), // either the flight group has the url or a specific flight does
 });
 
 export const flights = sqliteTable("flights", {
@@ -31,8 +32,10 @@ export const flights = sqliteTable("flights", {
   checkedBags: integer("checked_bags").notNull(),
   mealIncluded: text("meal_included").notNull(),
   from: text("from").notNull(),
+  fromAirportCode: text("from_airport_code").notNull(),
   fromCity: text("from_city").notNull(),
   to: text("to").notNull(),
+  toAirportCode: text("to_airport_code").notNull(),
   toCity: text("to_city").notNull(),
   departureTime: text("departure_time").notNull(),
   arrivalTime: text("arrival_time").notNull(),
@@ -42,6 +45,7 @@ export const flights = sqliteTable("flights", {
   aircraft: text("aircraft").notNull(),
   seat: text("seat").notNull(),
   price: real("price").notNull(),
+  url: text("url"),
 });
 
 export const hotels = sqliteTable("hotels", {
