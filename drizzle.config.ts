@@ -69,22 +69,24 @@ function getD1BindingInfo(binding?: string, { persistTo }: { persistTo?: string 
 
 const ENV_CF_D1_ACCOUNT_ID = 'ACCOUNT_ID' as const;
 const ENV_CF_D1_API_TOKEN = 'DATABASE_TOKEN' as const;
+const ENV_CF_D1_DB_ID = "DATABASE_ID" as const;
 
-const useRemoteDatabase = process.env.NODE_ENV === 'production';
+const useRemoteDatabase = true //process.env.NODE_ENV === 'production';
 const databaseBinding = "DATABASE";
-const binding = getD1BindingInfo(databaseBinding);
 
-console.log(`D1 Binding: ${binding.binding}`);
-console.log(`Database Id: ${binding.databaseId}`);
 if (useRemoteDatabase) {
-  const missingEnvVars = [ENV_CF_D1_ACCOUNT_ID, ENV_CF_D1_API_TOKEN].filter((v) => !process.env[v]);
+  const missingEnvVars = [ENV_CF_D1_ACCOUNT_ID, ENV_CF_D1_API_TOKEN, ENV_CF_D1_DB_ID].filter((v) => !process.env[v]);
 
   console.log('Mode: remote (using remote Cloudflare D1 database)');
+  console.log(`Database Id: ${process.env[ENV_CF_D1_DB_ID]}`);
 
   if (missingEnvVars.length > 0) {
     throw new Error(`Missing required environment variable${missingEnvVars.length > 1 ? 's' : ''}: ${missingEnvVars.join(', ')}.`);
   }
 } else {
+  const binding = getD1BindingInfo(databaseBinding);
+  console.log(`D1 Binding: ${binding.binding}`);
+  console.log(`Database Id: ${binding.databaseId}`);
   console.log(`Mode: local (using local database found at ${binding.localSqliteFile})`);
 }
 
@@ -96,14 +98,14 @@ export default defineConfig({
     ? {
         driver: 'd1-http',
         dbCredentials: {
-            databaseId: binding.databaseId,
-            accountId: process.env[ENV_CF_D1_ACCOUNT_ID],
-            token: process.env[ENV_CF_D1_API_TOKEN],
+            databaseId: process.env[ENV_CF_D1_DB_ID]!,
+            accountId: process.env[ENV_CF_D1_ACCOUNT_ID]!,
+            token: process.env[ENV_CF_D1_API_TOKEN]!,
         },
         }
     : {
         dbCredentials: {
-            url: `file:${binding.localSqliteFile}`,
+            url: `file:${getD1BindingInfo(databaseBinding).localSqliteFile}`,
         },
         }),
 });

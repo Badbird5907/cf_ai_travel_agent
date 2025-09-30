@@ -7,9 +7,7 @@
 	"name": "travel-agent",
 	"compatibility_date": "2025-04-04",
 	"main": "./workers/app.ts",
-	"vars": {
-		
-	},
+	"vars": {},
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
@@ -31,7 +29,7 @@
 		{
 			"binding": "DATABASE",
 			"database_name": "trip-planner-database",
-			"database_id": "fd8f2656-d12e-48d8-ba36-219ec757d463",
+			"database_id": "32421af1-4dc3-449e-87ba-f090f3047f83",
 			"migrations_dir": "./drizzle"
 		}
 	],
@@ -49,7 +47,9 @@
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["PlannerAgent"]
+			"new_sqlite_classes": [
+				"PlannerAgent"
+			]
 		}
 	]
 	/**

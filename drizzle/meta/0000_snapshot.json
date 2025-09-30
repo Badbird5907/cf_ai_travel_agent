@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ceeed9ad-045e-4b0c-9b17-1cbb0ef27165",
+  "id": "287b8778-35d9-412a-82ed-62fb29713df4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "activities": {
@@ -114,6 +114,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -160,8 +167,43 @@
           "notNull": true,
           "autoincrement": false
         },
+        "class": {
+          "name": "class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "carry_on": {
+          "name": "carry_on",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checked_bags": {
+          "name": "checked_bags",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "meal_included": {
+          "name": "meal_included",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "from": {
           "name": "from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_airport_code": {
+          "name": "from_airport_code",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -176,6 +218,13 @@
         },
         "to": {
           "name": "to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_airport_code": {
+          "name": "to_airport_code",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -242,6 +291,13 @@
           "type": "real",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },
@@ -515,8 +571,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "total_cost": {
-          "name": "total_cost",
+        "estimated_meals_cost": {
+          "name": "estimated_meals_cost",
           "type": "real",
           "primaryKey": false,
           "notNull": true,

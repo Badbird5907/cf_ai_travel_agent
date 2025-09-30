@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import type { Route } from "./+types/plan"
 import { useSearchParams } from "react-router"
 import { Card } from "@/components/ui/card"
@@ -34,8 +34,10 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export type AgentState = DeepPartial<TripData>
-export async function loader({ context, params }: Route.LoaderArgs) {
+export async function loader({ context, params, request }: Route.LoaderArgs) {
   const agentName = params.agentId
+  const queryParams = new URL(request.url).searchParams
+  const msg = queryParams.get("msg");
   const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName) // context.cloudflare.env.PlannerAgent.getByName(new URL(request.url).pathname)
   agent.setName(agentName)
 
@@ -43,10 +45,12 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     return new Response(null, { status: 404 })
   }
   const tripData = agent.getState() as AgentState
-  console.log({ params })
+  // get query params
+  
   return {
     agentId: agentName,
     tripData,
+    msg
   }
   // return {
   //   agentId: "mock",
@@ -54,13 +58,24 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   // }
 }
 
+export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
+  const serverData = await serverLoader()
+  if (serverData.msg) {
+    // remove from query params
+    const url = new URL(window.location.href)
+    url.searchParams.delete('msg')
+    window.history.replaceState({}, '', url)
+  }
+  return {
+    ...serverData
+  }
+}
+
 export default function Plan({ loaderData }: Route.ComponentProps): React.ReactElement {
   if (typeof window === "undefined") {
     return <div>Loading...</div>
   }
   console.log(loaderData)
-  const [searchParams] = useSearchParams()
-
   const [tripData, setTripData] = useState<AgentState>(loaderData.tripData)
 
   const costs = useMemo(() => {
@@ -120,7 +135,7 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
       </header>
       <div className="flex-1 flex">
         <div className="w-1/3 min-w-[400px] max-w-[500px] h-[calc(100vh-73px)] sticky top-[73px]">
-          <ChatSidebar agentId={loaderData.agentId} />
+          <ChatSidebar agentId={loaderData.agentId} initialMsg={loaderData.msg ?? ""} />
         </div>
 
         <div className="flex-1">

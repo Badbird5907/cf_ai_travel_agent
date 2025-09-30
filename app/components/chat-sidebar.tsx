@@ -134,7 +134,7 @@ function ToolTask({
   )
 }
 
-export function ChatSidebar({ agentId }: { agentId: string }) {
+export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialMsg: string }) {
   if (typeof window === "undefined") {
     return null
   }
@@ -163,6 +163,16 @@ export function ChatSidebar({ agentId }: { agentId: string }) {
   } = useAgentChat<unknown, UIMessage<{ createdAt: string }>>({
     agent
   })
+
+  useEffect(() => {
+    if (!initialMsg) return;
+    sendMessage({
+      role: "user",
+      parts: [{ type: "text", text: initialMsg }]
+    }, {
+      body: {}
+    })
+  }, [initialMsg])
 
   useEffect(() => {
     scrollToBottom()
