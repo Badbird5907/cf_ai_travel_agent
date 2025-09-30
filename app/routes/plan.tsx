@@ -34,7 +34,7 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export type AgentState = DeepPartial<TripData>
-export async function loader({ context, params, request }: Route.LoaderArgs) {
+export async function loader({ context, params }: Route.LoaderArgs) {
   const agentName = params.agentId
   const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName) // context.cloudflare.env.PlannerAgent.getByName(new URL(request.url).pathname)
   agent.setName(agentName)
@@ -43,10 +43,10 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     return new Response(null, { status: 404 })
   }
   const tripData = agent.getState() as AgentState
-  console.log({ tripData })
+  console.log({ params })
   return {
     agentId: agentName,
-    tripData
+    tripData,
   }
   // return {
   //   agentId: "mock",
