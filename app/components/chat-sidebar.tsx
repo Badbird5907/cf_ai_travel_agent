@@ -12,10 +12,9 @@ import type { PlannerAgent } from "../agents/plan"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Send, Bot, User, Trash2 } from "lucide-react"
-import { Streamdown } from "streamdown"
+import { Send, Bot, User, Trash2, Square } from "lucide-react"
+import ReactMarkdown from "react-markdown"
 import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task"
-import { Stop } from "@phosphor-icons/react"
 
 type AllTools = ReturnType<typeof getTools> & ReturnType<typeof getPlannerTools>
 // List of tools that require human confirmation
@@ -248,8 +247,8 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
                                 isUser ? "bg-primary text-primary-foreground ml-auto" : "bg-muted/50"
                               }`}
                             >
-                              <div className="text-sm leading-relaxed">
-                                <Streamdown>{part.text}</Streamdown>
+                              <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>{part.text}</ReactMarkdown>
                               </div>
                             </Card>
                             <p className={`text-xs text-muted-foreground mt-1 px-1 ${isUser ? "text-right" : "text-left"}`}>
@@ -356,7 +355,7 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
                   className="size-[48px] rounded-xl px-0 shadow-lg shadow-destructive/20 hover:shadow-destructive/30"
                   variant="destructive"
                 >
-                  <Stop className="w-4 h-4" />
+                  <Square className="w-4 h-4" />
                 </Button>
               ) : (
                 <Button
