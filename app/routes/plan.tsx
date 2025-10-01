@@ -33,12 +33,12 @@ export type AgentState = DeepPartial<TripData>
 export async function loader({ context, params, request }: Route.LoaderArgs) {
   const agentName = params.agentId
 
-  // First check if the agent exists in the database
-  const dbAgent = await context.db.select().from(agents).where(eq(agents.id, agentName)).get()
+  // // First check if the agent exists in the database
+  // const dbAgent = await context.db.select().from(agents).where(eq(agents.id, agentName)).get()
 
-  if (!dbAgent) {
-    throw new Response("Agent not found", { status: 404 })
-  }
+  // if (!dbAgent) {
+  //   throw new Response("Agent not found", { status: 404 })
+  // }
 
   // Get the Durable Object agent
   const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName)
