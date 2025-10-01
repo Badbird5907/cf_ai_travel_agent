@@ -23,8 +23,9 @@ import type { TripData } from "@/types"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { getAgentByName } from "agents"
 import { useAgent } from "agents/react"
-import { activities, flightGroups } from "@/db/schema"
+import { agents } from "@/db/schema"
 import { capitalize } from "@/lib/utils"
+import { eq } from "drizzle-orm"
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -36,36 +37,33 @@ export function meta({ }: Route.MetaArgs) {
 export type AgentState = DeepPartial<TripData>
 export async function loader({ context, params, request }: Route.LoaderArgs) {
   const agentName = params.agentId
-  const queryParams = new URL(request.url).searchParams
-  const msg = queryParams.get("msg");
-  const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName) // context.cloudflare.env.PlannerAgent.getByName(new URL(request.url).pathname)
+  
+  // First check if the agent exists in the database
+  const dbAgent = await context.db.select().from(agents).where(eq(agents.id, agentName)).get()
+  
+  if (!dbAgent) {
+    throw new Response("Agent not found", { status: 404 })
+  }
+  
+  // Get the Durable Object agent
+  const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName)
   agent.setName(agentName)
 
   if (!agent) {
-    return new Response(null, { status: 404 })
+    throw new Response("Agent not found", { status: 404 })
   }
+  
   const tripData = agent.getState() as AgentState
-  // get query params
   
   return {
     agentId: agentName,
     tripData,
-    msg
+    initialPrompt: !dbAgent.initialPromptUsed ? dbAgent.prompt : undefined, // Only pass prompt if not used yet
   }
-  // return {
-  //   agentId: "mock",
-  //   tripData: mockTripData
-  // }
 }
 
 export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
   const serverData = await serverLoader()
-  if (serverData.msg) {
-    // remove from query params
-    const url = new URL(window.location.href)
-    url.searchParams.delete('msg')
-    window.history.replaceState({}, '', url)
-  }
   return {
     ...serverData
   }
@@ -135,7 +133,7 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
       </header>
       <div className="flex-1 flex">
         <div className="w-1/3 min-w-[400px] max-w-[500px] h-[calc(100vh-73px)] sticky top-[73px]">
-          <ChatSidebar agentId={loaderData.agentId} initialMsg={loaderData.msg ?? ""} />
+          <ChatSidebar agentId={loaderData.agentId} initialPrompt={loaderData.initialPrompt} />
         </div>
 
         <div className="flex-1">

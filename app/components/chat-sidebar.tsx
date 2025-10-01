@@ -15,6 +15,8 @@ import { Card } from "@/components/ui/card"
 import { Send, Bot, User, Trash2, Square, Loader2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task"
+import { useTRPC } from "@/utils/trpc"
+import { useMutation } from "@tanstack/react-query"
 
 type AllTools = ReturnType<typeof getTools> & ReturnType<typeof getPlannerTools>
 // List of tools that require human confirmation
@@ -142,7 +144,7 @@ function ToolTask({
   )
 }
 
-export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialMsg: string }) {
+export function ChatSidebar({ agentId, initialPrompt }: { agentId: string; initialPrompt?: string }) {
   if (typeof window === "undefined") {
     return null
   }
@@ -150,12 +152,16 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
   const [inputValue, setInputValue] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const hasSentInitialPromptRef = useRef(false)
 
   const scrollToBottom = useCallback(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
   }, [])
+
+  const trpc = useTRPC()
+  const markPromptUsedMutation = useMutation(trpc.plan.markInitialPromptUsed.mutationOptions())
 
   const agent = useAgent({
     agent: "PlannerAgent",
@@ -172,15 +178,24 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
     agent
   })
 
+  // Send initial prompt if there are no messages and we haven't sent it yet
   useEffect(() => {
-    if (!initialMsg) return;
-    sendMessage({
-      role: "user",
-      parts: [{ type: "text", text: initialMsg }]
-    }, {
-      body: {}
-    })
-  }, [initialMsg])
+    if (!hasSentInitialPromptRef.current && initialPrompt && agentMessages.length === 0 && status === "ready") {
+      hasSentInitialPromptRef.current = true
+      sendMessage(
+        {
+          role: "user",
+          parts: [{ type: "text", text: initialPrompt }]
+        },
+        {
+          body: {}
+        }
+      )
+      
+      // Mark the initial prompt as used in the database
+      markPromptUsedMutation.mutate({ agentId })
+    }
+  }, [initialPrompt, agentMessages.length, status, sendMessage, agentId, markPromptUsedMutation])
 
   useEffect(() => {
     scrollToBottom()

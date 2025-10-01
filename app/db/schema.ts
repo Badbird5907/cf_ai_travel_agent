@@ -3,9 +3,22 @@ import { sqliteTable, text, real, integer } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { generateId } from "../lib/utils";
+import * as authSchema from "./auth-schema";
+
+export * from "./auth-schema";
+
+export const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(),
+  prompt: text("prompt").notNull(),
+  initialPromptUsed: integer("initial_prompt_used", { mode: "boolean" }).notNull().default(false),
+  status: text("status").notNull().default("active"), // active, completed, failed
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
+});
 
 export const trips = sqliteTable("trips", {
   id: text("id").primaryKey().$defaultFn(() => generateId("trip")),
+  createdById: text("created_by_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
   destination: text("destination").notNull(),
   duration: text("duration").notNull(),
   dates: text("dates").notNull(),

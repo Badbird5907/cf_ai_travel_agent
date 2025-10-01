@@ -71,7 +71,7 @@ const ENV_CF_D1_ACCOUNT_ID = 'ACCOUNT_ID' as const;
 const ENV_CF_D1_API_TOKEN = 'DATABASE_TOKEN' as const;
 const ENV_CF_D1_DB_ID = "DATABASE_ID" as const;
 
-const useRemoteDatabase = true //process.env.NODE_ENV === 'production';
+const useRemoteDatabase = process.env.USE_REMOTE_DATABASE === "true" || process.env.NODE_ENV === 'production';
 const databaseBinding = "DATABASE";
 
 if (useRemoteDatabase) {

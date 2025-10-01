@@ -1,0 +1,1 @@
+ALTER TABLE `agents` ADD `initial_prompt_used` integer DEFAULT false NOT NULL;
