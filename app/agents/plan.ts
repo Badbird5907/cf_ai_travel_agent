@@ -5,12 +5,23 @@ import { cleanupMessages, processToolCalls } from "./utils";
 import { getTools, getPlannerTools } from "./tools";
 import type { DeepPartial, TripData } from "@/types";
 import { getSystemPrompt } from "./system";
+import { auth } from "@/lib/auth";
 
 
 export type AgentState = DeepPartial<TripData>
 export class PlannerAgent extends AIChatAgent<Env, AgentState> {
   getState(): AgentState {
     return this.state as AgentState;
+  }
+  async onRequest(request: Request): Promise<Response> {
+    const betterAuth = auth(this.env);
+    const session = await betterAuth.api.getSession({
+      headers: request.headers,
+    });
+    if (!session) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    return await super.onRequest(request);
   }
 
   async onChatMessage(

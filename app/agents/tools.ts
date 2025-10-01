@@ -103,14 +103,14 @@ export const getTools = (env: Env) => {
 
 export const getPlannerTools = (agent: PlannerAgent): ToolSet => {
   return {
-    getState: tool({
-      name: "dev_getState",
-      description: "[dev] Get the current state of the agent",
-      inputSchema: z.object({}),
-      execute: async () => {
-        return agent.getState();
-      }
-    }),
+    // getState: tool({
+    //   name: "dev_getState",
+    //   description: "[dev] Get the current state of the agent",
+    //   inputSchema: z.object({}),
+    //   execute: async () => {
+    //     return agent.getState();
+    //   }
+    // }),
     writeState: tool({
       name: "writeState",
       description: "Overwrite some keys of the current state",

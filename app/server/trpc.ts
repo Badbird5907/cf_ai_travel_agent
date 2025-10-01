@@ -1,4 +1,4 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import type { TRPCContext } from '@/entry.server';
 
 /**
@@ -13,3 +13,12 @@ const t = initTRPC.context<TRPCContext>().create();
  */
 export const router = t.router;
 export const publicProcedure = t.procedure;
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  const session = await ctx.auth.api.getSession({
+    headers: ctx.headers,
+  });
+  if (!session) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({ ctx: { ...ctx, session } });
+});

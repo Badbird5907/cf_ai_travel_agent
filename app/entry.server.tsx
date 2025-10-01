@@ -4,15 +4,14 @@ import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { appRouter } from "@/server";
-import { createTRPCContext } from "@trpc/tanstack-react-query";
-import { getAgentByName, routeAgentRequest } from "agents";
-import type { PlannerAgent } from "@/agents/plan";
+import { routeAgentRequest } from "agents";
 
 const createContext = (ctx: AppLoadContext, headers: Headers) => {
   return {
     headers: headers,
     env: ctx.cloudflare.env,
     db: ctx.db,
+    auth: ctx.auth,
   }
 }
 export type TRPCContext = ReturnType<typeof createContext>;
@@ -44,6 +43,9 @@ export default async function handleRequest(
           return createContext(_loadContext, request.headers)
         }
       });
+    }
+    if (url.pathname.startsWith("/api/auth")) {
+      return _loadContext.auth.handler(request);
     }
   }
 

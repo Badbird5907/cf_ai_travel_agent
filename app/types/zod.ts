@@ -2,12 +2,14 @@ import { trips, flightGroups, flights, hotels, activities, itineraryDays, restau
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const zFlightGroup = createSelectSchema(flightGroups);
 export const zFlight = createSelectSchema(flights, {
   fromAirportCode: z.string().max(3).describe("The airport code of the departure airport"),
   toAirportCode: z.string().max(3).describe("The airport code of the arrival airport"),
   departureTime: z.iso.datetime({ offset: true }).describe("The departure time of the flight in iso 8601 format (with offset of departure airport)"),
   arrivalTime: z.iso.datetime({ offset: true }).describe("The arrival time of the flight in iso 8601 format (with offset of arrival airport)"),
+});
+export const zFlightGroup = createSelectSchema(flightGroups).extend({
+  flights: z.array(zFlight),
 });
 export const zHotel = createSelectSchema(hotels);
 export const zActivity = createSelectSchema(activities);

@@ -145,14 +145,11 @@ function ToolTask({
 }
 
 export function ChatSidebar({ agentId, initialPrompt }: { agentId: string; initialPrompt?: string }) {
-  if (typeof window === "undefined") {
-    return null
-  }
-
   const [inputValue, setInputValue] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const hasSentInitialPromptRef = useRef(false)
+  const isClient = typeof window !== "undefined"
 
   const scrollToBottom = useCallback(() => {
     if (messagesContainerRef.current) {
@@ -180,6 +177,8 @@ export function ChatSidebar({ agentId, initialPrompt }: { agentId: string; initi
 
   // Send initial prompt if there are no messages and we haven't sent it yet
   useEffect(() => {
+    if (!isClient) return
+    
     if (!hasSentInitialPromptRef.current && initialPrompt && agentMessages.length === 0 && status === "ready") {
       hasSentInitialPromptRef.current = true
       sendMessage(
@@ -195,7 +194,7 @@ export function ChatSidebar({ agentId, initialPrompt }: { agentId: string; initi
       // Mark the initial prompt as used in the database
       markPromptUsedMutation.mutate({ agentId })
     }
-  }, [initialPrompt, agentMessages.length, status, sendMessage, agentId, markPromptUsedMutation])
+  }, [isClient, initialPrompt, agentMessages.length, status, sendMessage, agentId, markPromptUsedMutation])
 
   useEffect(() => {
     scrollToBottom()

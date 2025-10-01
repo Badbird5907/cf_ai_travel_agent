@@ -7,11 +7,33 @@ import * as authSchema from "./auth-schema";
 
 export * from "./auth-schema";
 
+
+export const usersRelations = relations(authSchema.user, ({ one, many }) => ({
+  savedTrips: many(savedTrips),
+  agents: many(agents),
+}));
+
 export const agents = sqliteTable("agents", {
   id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
   prompt: text("prompt").notNull(),
   initialPromptUsed: integer("initial_prompt_used", { mode: "boolean" }).notNull().default(false),
   status: text("status").notNull().default("active"), // active, completed, failed
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const agentsRelations = relations(agents, ({ one }) => ({
+  owner: one(authSchema.user, {
+    fields: [agents.ownerId],
+    references: [authSchema.user.id],
+  }),
+}));
+
+export const savedTrips = sqliteTable("saved_trips", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
+  tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
 });
@@ -23,6 +45,7 @@ export const trips = sqliteTable("trips", {
   duration: text("duration").notNull(),
   dates: text("dates").notNull(),
   estimatedMealsCost: real("estimated_meals_cost").notNull(),
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
 });

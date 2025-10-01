@@ -5,9 +5,14 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plane, MapPin, Sparkles, ArrowRight } from "lucide-react"
+import { Plane, MapPin, Sparkles, ArrowRight, Github, List } from "lucide-react"
 import { useTRPC } from "@/utils/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { signIn, signOut, useSession } from "@/lib/auth-client";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Link } from "react-router";
+
 export function meta({ }: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
@@ -24,21 +29,43 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const trpc = useTRPC()
   const mutation = useMutation(trpc.plan.beginPlanning.mutationOptions())
   const [isStarting, setIsStarting] = useState(false)
+  const [showSignInDialog, setShowSignInDialog] = useState(false)
+  const { data: session } = useSession()
+
+  // Restore prompt from localStorage on mount
+  useEffect(() => {
+    const savedPrompt = localStorage.getItem('pending-prompt')
+    if (savedPrompt) {
+      setPrompt(savedPrompt)
+      localStorage.removeItem('pending-prompt')
+    }
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!prompt.trim()) return
 
+    // Check if user is signed in
+    if (!session) {
+      setShowSignInDialog(true)
+      return
+    }
+
     setIsStarting(true)
     mutation.mutate({ prompt }, {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         window.location.href = `/plan/${data.agentId}`
       }
     })
-    // Simulate navigation delay
-    // setTimeout(() => {
-    //   window.location.href = `/planning?prompt=${encodeURIComponent(prompt)}`
-    // }, 800)
+  }
+
+  const handleSignIn = async () => {
+    // Save prompt to localStorage before redirecting
+    localStorage.setItem('pending-prompt', prompt)
+    await signIn.social({
+      provider: "github",
+      callbackURL: "/",
+    })
   }
 
   const examplePrompts = [
@@ -60,19 +87,37 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </div>
               <span className="text-xl font-semibold">TravelAI</span>
             </div>
-            <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">
-                Features
-              </a>
-              <a href="#" className="hover:text-foreground transition-colors">
-                Examples
-              </a>
-              <a href="#" className="hover:text-foreground transition-colors">
-                Pricing
-              </a>
-              <Button variant="outline" size="sm">
-                Sign In
-              </Button>
+            <nav className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
+              {session && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/agents">
+                    <List className="w-4 h-4 mr-2" />
+                    My Agents
+                  </Link>
+                </Button>
+              )}
+              {session ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {session.user.name}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      signOut()
+                    }}>
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => {
+                  window.location.href = "/auth/signin"
+                }}>
+                  Sign In
+                </Button>
+              )}
             </nav>
           </div>
         </div>
@@ -189,6 +234,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       </main>
+
+      {/* Sign In Dialog */}
+      <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sign in to continue</DialogTitle>
+            <DialogDescription>
+              Sign in to your account to start planning your perfect trip
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Button
+              onClick={handleSignIn}
+              variant="outline"
+              size="lg"
+              className="w-full text-base py-6 hover:bg-accent hover:border-primary/50 transition-all duration-300"
+            >
+              <Github className="w-5 h-5" />
+              Continue with GitHub
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Your prompt will be saved and ready when you return
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -144,3 +144,6 @@ Instead of using @tool-invocation-card.tsx use the @task.tsx component
 
 7.
 Extract the tool calls in @plan.ts to a seperate file
+
+8.
+Implement a signin page for github social with better auth (@auth.ts and @auth-client.ts) in @signin.tsx 
