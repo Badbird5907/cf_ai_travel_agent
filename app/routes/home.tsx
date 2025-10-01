@@ -15,8 +15,8 @@ import { Link } from "react-router";
 
 export function meta({ }: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "TravelAI" },
+    { name: "description", content: "An agentic AI travel planner" },
   ];
 }
 
@@ -90,7 +90,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <nav className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
               {session && (
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/agents">
+                  <Link to="/trips">
                     <List className="w-4 h-4 mr-2" />
                     My Agents
                   </Link>
