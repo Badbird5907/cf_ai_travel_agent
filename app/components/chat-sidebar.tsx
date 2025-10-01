@@ -12,7 +12,7 @@ import type { PlannerAgent } from "../agents/plan"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Send, Bot, User, Trash2, Square } from "lucide-react"
+import { Send, Bot, User, Trash2, Square, Loader2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task"
 
@@ -50,7 +50,8 @@ function ToolTask({
   toolCallId,
   isGeneratingLatest,
   needsConfirmation,
-  addToolResult
+  addToolResult,
+  isCurrentToolCall
 }: {
   part: any
   toolName: string
@@ -58,6 +59,7 @@ function ToolTask({
   isGeneratingLatest: boolean
   needsConfirmation: boolean
   addToolResult: (args: { tool: string; toolCallId: string; output: any }) => void
+  isCurrentToolCall: boolean
 }) {
   const [userOpen, setUserOpen] = useState(false)
 
@@ -78,7 +80,14 @@ function ToolTask({
 
   return (
     <Task defaultOpen={false} open={isOpen} onOpenChange={setUserOpen} className="pb-2">
-      <TaskTrigger title={`${titleText}`} />
+      <TaskTrigger title={`${titleText}`}>
+        {isCurrentToolCall ? (
+          <div className="flex w-full cursor-pointer items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            <p className="text-sm">{titleText}</p>
+          </div>
+        ) : undefined}
+      </TaskTrigger>
       <TaskContent>
         <TaskItem>
           <p className="text-sm text-muted-foreground">Status: {part.state}</p>
@@ -269,6 +278,11 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
                           toolName as keyof AllTools
                         )
 
+                        // Determine if this is the current tool call being executed
+                        const toolParts = m.parts?.filter(isToolUIPart) || []
+                        const isLastToolInMessage = toolParts[toolParts.length - 1]?.toolCallId === toolCallId
+                        const isCurrentToolCall = isGeneratingLatest && isLastToolInMessage
+
                         return (
                           <ToolTask
                             key={`${toolCallId}-${i}`}
@@ -278,6 +292,7 @@ export function ChatSidebar({ agentId, initialMsg }: { agentId: string; initialM
                             isGeneratingLatest={isGeneratingLatest}
                             needsConfirmation={needsConfirmation}
                             addToolResult={addToolResult}
+                            isCurrentToolCall={isCurrentToolCall}
                           />
                         )
                       }
