@@ -1,2 +1,5 @@
 patchedDependencies:
   workerd: patches/workerd.patch
+
+packages:
+  - "app/**"
