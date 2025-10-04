@@ -1,6 +1,5 @@
-import React, { useMemo } from "react"
+import { useMemo } from "react"
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CostBreakdown } from "@/components/cost-breakdown"
 import {
@@ -12,9 +11,6 @@ import {
   Clock,
   Star,
   DollarSign,
-  Download,
-  Share,
-  Heart,
 } from "lucide-react"
 import type { DeepPartial } from "ai"
 import type { TripData } from "@/types"

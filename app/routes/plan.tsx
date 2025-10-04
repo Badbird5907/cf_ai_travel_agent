@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react"
 import type { Route } from "./+types/plan"
-import { Button } from "@/components/ui/button"
-import { Plane, Share, Heart, Check } from "lucide-react"
+import { Plane } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
@@ -20,7 +19,6 @@ import { getAgentByName } from "agents"
 import { useAgent } from "agents/react"
 import { agents } from "@/db/schema"
 import { eq } from "drizzle-orm"
-import { useMutation } from "@tanstack/react-query"
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -42,7 +40,7 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
 
   // Get the Durable Object agent
   const agent = await getAgentByName(context.cloudflare.env.PlannerAgent, agentName)
-  agent.setName(agentName)
+  // agent.setName(agentName)
 
   if (!agent) {
     throw new Response("Agent not found", { status: 404 })
@@ -66,9 +64,11 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
 
 
 export default function Plan({ loaderData }: Route.ComponentProps): React.ReactElement {
+  if (typeof window === "undefined") {
+    return <div>Loading...</div>
+  }
   const [tripData, setTripData] = useState<AgentState>(loaderData.tripData)
-  const [linkCopied, setLinkCopied] = useState(false)
-  const costs = useMemo(() => {
+   const costs = useMemo(() => {
     const hotelsTotal = tripData?.hotels?.reduce((total, hotel) => total + (hotel?.totalPrice ?? 0), 0) ?? 0
     const activitiesTotal = tripData?.activities?.reduce((total, activity) => total + (activity?.price ?? 0), 0) ?? 0
     const mealsTotal = tripData?.estimatedMealsCost ?? 0
@@ -93,39 +93,6 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
     }
   })
 
-  const shareAgentMutation = useMutation({
-    mutationFn: async (agentId: string) => {
-      const response = await fetch("/api/trpc/trips.shareAgentTrip", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ agentId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json() as { error?: { message?: string } };
-        throw new Error(error.error?.message || "Failed to share trip");
-      }
-
-      const result = await response.json() as { result: { data: { tripId: string } } };
-      return result.result.data;
-    },
-    onSuccess: (data) => {
-      const tripUrl = `${window.location.origin}/trip/${data.tripId}`;
-      navigator.clipboard.writeText(tripUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    },
-    onError: (error: Error) => {
-      alert(error.message);
-    },
-  });
-
-  const handleShare = () => {
-    shareAgentMutation.mutate(loaderData.agentId);
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -138,25 +105,6 @@ export default function Plan({ loaderData }: Route.ComponentProps): React.ReactE
               </div>
               <span className="text-xl font-semibold">TravelAI</span>
             </div>
-            {/* <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleShare}
-                disabled={shareAgentMutation.isPending}
-              >
-                {linkCopied ? (
-                  <Check className="w-4 h-4 mr-2" />
-                ) : (
-                  <Share className="w-4 h-4 mr-2" />
-                )}
-                {linkCopied ? "Copied!" : "Share"}
-              </Button>
-              <Button size="sm">
-                <Heart className="w-4 h-4 mr-2" />
-                Save Trip
-              </Button>
-            </div> */}
           </div>
         </div>
       </header>

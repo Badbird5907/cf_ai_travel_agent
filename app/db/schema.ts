@@ -7,9 +7,7 @@ import * as authSchema from "./auth-schema";
 
 export * from "./auth-schema";
 
-
 export const usersRelations = relations(authSchema.user, ({ one, many }) => ({
-  savedTrips: many(savedTrips),
   agents: many(agents),
 }));
 
@@ -29,14 +27,6 @@ export const agentsRelations = relations(agents, ({ one }) => ({
     references: [authSchema.user.id],
   }),
 }));
-
-export const savedTrips = sqliteTable("saved_trips", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => authSchema.user.id, { onDelete: "cascade" }),
-  tripId: text("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(sql`(unixepoch())`),
-});
 
 export const trips = sqliteTable("trips", {
   id: text("id").primaryKey().$defaultFn(() => generateId("trip")),
