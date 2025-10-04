@@ -67,9 +67,9 @@ function getD1BindingInfo(binding?: string, { persistTo }: { persistTo?: string 
   };
 }
 
-const ENV_CF_D1_ACCOUNT_ID = 'ACCOUNT_ID' as const;
-const ENV_CF_D1_API_TOKEN = 'DATABASE_TOKEN' as const;
-const ENV_CF_D1_DB_ID = "DATABASE_ID" as const;
+const ENV_CF_D1_ACCOUNT_ID = 'CF_ACCOUNT_ID' as const;
+const ENV_CF_D1_API_TOKEN = 'CF_D1_DATABASE_TOKEN' as const;
+const ENV_CF_D1_DB_ID = "CF_D1_DATABASE_ID" as const;
 
 const useRemoteDatabase = process.env.USE_REMOTE_DATABASE === "true" || process.env.NODE_ENV === 'production';
 const databaseBinding = "DATABASE";

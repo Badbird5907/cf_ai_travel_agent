@@ -1,0 +1,21 @@
+# Remember to update the database id in wrangler.jsonc
+
+CF_D1_DATABASE_ID=<your-database-id>
+CF_D1_DATABASE_TOKEN=<your-database-token>
+CF_ACCOUNT_ID=<your-account-id>
+OPENAI_API_KEY=<your-openai-api-key>
+
+# For Search - https://exa.ai
+EXA_API_KEY=<your-exa-api-key>
+
+# For Flight Search - https://rapidapi.com/DataCrawler/api/google-flights2/playground
+RAPIDAPI_KEY=<your-rapidapi-key>
+
+# For Better Auth
+BETTER_AUTH_SECRET=<some random string>
+BETTER_AUTH_URL=http://localhost:5173
+
+# For Github OAuth - https://github.com/settings/applications/new
+# Set the callback URL to http://localhost:5173/api/auth/callback/github
+GITHUB_CLIENT_ID=<your-github-client-id>
+GITHUB_CLIENT_SECRET=<your-github-client-secret>
